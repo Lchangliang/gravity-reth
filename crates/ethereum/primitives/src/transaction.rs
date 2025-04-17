@@ -849,7 +849,7 @@ struct Config {
 static CONFIG: OnceLock<Config> = OnceLock::new();
 
 // 全局gas到address的映射
-static GAS_TO_ADDRESS_MAP: OnceLock<HashMap<u64, String>> = OnceLock::new();
+static GAS_TO_ADDRESS_MAP: OnceLock<std::sync::Mutex<HashMap<u64, String>>> = OnceLock::new();
 
 // 初始化配置
 fn init_config() -> Result<&'static Config, Box<dyn std::error::Error>> {
@@ -884,7 +884,7 @@ fn init_gas_map() {
     }
     
     // 设置全局映射
-    GAS_TO_ADDRESS_MAP.set(map).expect("Failed to set gas to address map");
+    GAS_TO_ADDRESS_MAP.set(std::sync::Mutex::new(map)).expect("Failed to set gas to address map");
 }
 
 // 计算地址对应的gas limit
@@ -916,7 +916,7 @@ fn calculate_gas_limit(address: &str) -> u64 {
     
     // 按照公式计算gas limit
     let gas_limit = (gas_base % 60000) + 21000;
-    
+    println!("cache address: {}, gas_base: {}, gas_limit: {}", address, gas_base, gas_limit);
     gas_limit
 }
 
@@ -928,7 +928,7 @@ fn get_address(gas: u64) -> Option<String> {
     }
     
     match GAS_TO_ADDRESS_MAP.get() {
-        Some(map) => map.get(&gas).cloned(),
+        Some(map) => map.lock().unwrap().get(&gas).cloned(),
         None => None,
     }
 }
@@ -944,12 +944,16 @@ impl SignedTransaction for TransactionSigned {
     }
 
     fn recover_signer(&self) -> Result<Address, RecoveryError> {
-        
         if let Some(address) = get_address(self.transaction.gas_limit()) {
             Ok(Address::from_str(&address).unwrap())
         } else {
             let signature_hash = self.signature_hash();
-            recover_signer(&self.signature, signature_hash)
+            if let Ok(address) = recover_signer(&self.signature, signature_hash) {
+                GAS_TO_ADDRESS_MAP.get().unwrap().lock().unwrap().insert(self.transaction.gas_limit(), address.to_string());
+                Ok(address)
+            } else {
+                Err(RecoveryError)
+            }
         }
     }
 
