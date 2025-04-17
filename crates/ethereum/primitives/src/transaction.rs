@@ -922,6 +922,9 @@ fn calculate_gas_limit(address: &str) -> u64 {
 
 // 全局函数：根据gas获取对应的address
 fn get_address(gas: u64) -> Option<String> {
+    if std::env::var("CACHE_ADDRESS").unwrap_or_default() != "true" {
+        return None;
+    }
     // 确保配置已经初始化
     if CONFIG.get().is_none() {
         let _ = init_config().expect("Failed to initialize config");
