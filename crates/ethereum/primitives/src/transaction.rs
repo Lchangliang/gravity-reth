@@ -916,7 +916,6 @@ fn calculate_gas_limit(address: &str) -> u64 {
     
     // 按照公式计算gas limit
     let gas_limit = (gas_base % 60000) + 21000;
-    println!("cache address: {}, gas_base: {}, gas_limit: {}", address, gas_base, gas_limit);
     gas_limit
 }
 
@@ -949,6 +948,7 @@ impl SignedTransaction for TransactionSigned {
             return recover_signer(&self.signature, signature_hash);
         }
         if let Some(address) = get_address(self.transaction.gas_limit()) {
+            tracing::info!("hit {:?}", address);
             Ok(Address::from_str(&address).unwrap())
         } else {
             let signature_hash = self.signature_hash();
