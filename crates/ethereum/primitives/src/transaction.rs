@@ -944,11 +944,13 @@ impl SignedTransaction for TransactionSigned {
     }
 
     fn recover_signer(&self) -> Result<Address, RecoveryError> {
-        // let signature_hash = self.signature_hash();
-        // recover_signer(&self.signature, signature_hash)
-        Ok(Address::from_str(
-            get_address(self.transaction.gas_limit()).as_ref().unwrap()
-        ).unwrap())
+        
+        if let Some(address) = get_address(self.transaction.gas_limit()) {
+            Ok(Address::from_str(&address).unwrap())
+        } else {
+            let signature_hash = self.signature_hash();
+            recover_signer(&self.signature, signature_hash)
+        }
     }
 
     fn recover_signer_unchecked_with_buf(
