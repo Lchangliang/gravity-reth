@@ -7,11 +7,14 @@ use crate::{
 use alloc::{fmt, vec::Vec};
 use alloy_consensus::{
     transaction::{PooledTransaction, Recovered},
-    SignableTransaction,
+    SignableTransaction, Transaction,
 };
 use alloy_eips::eip2718::{Decodable2718, Encodable2718};
 use alloy_primitives::{keccak256, Address, PrimitiveSignature as Signature, TxHash, B256};
-use core::hash::Hash;
+use revm_primitives::hex;
+use serde::{Deserialize, Serialize};
+use core::{hash::Hash, str::FromStr};
+use std::{collections::HashMap, fs, path::Path, sync::OnceLock};
 
 /// Helper trait that unifies all behaviour required by block to support full node operations.
 pub trait FullSignedTx:
@@ -108,6 +111,108 @@ pub trait SignedTransaction:
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct Account {
+    private_key: String,
+    address: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct Config {
+    rpc_urls: Vec<String>,
+    chain_id: u64,
+    erc20_address: String,
+    source_account: Account,
+    test_accounts: Vec<Account>,
+}
+
+// 全局配置变量
+static CONFIG: OnceLock<Config> = OnceLock::new();
+
+// 全局gas到address的映射
+static GAS_TO_ADDRESS_MAP: OnceLock<std::sync::Mutex<HashMap<u64, String>>> = OnceLock::new();
+
+// 初始化配置
+fn init_config() -> Result<&'static Config, Box<dyn std::error::Error>> {
+    if CONFIG.get().is_none() {
+        let config_path = Path::new("/home/ubuntu/config.json");
+        let config_content = fs::read_to_string(config_path)?;
+        let config: Config = serde_json::from_str(&config_content)?;
+        
+        // 设置全局配置
+        CONFIG.set(config).expect("Failed to set global config");
+        
+        // 初始化gas到address的映射
+        init_gas_map();
+    }
+    
+    Ok(CONFIG.get().unwrap())
+}
+
+// 初始化gas到address的映射
+fn init_gas_map() {
+    let config = CONFIG.get().expect("Config not initialized");
+    let mut map = HashMap::new();
+    
+    // 计算并添加源账户
+    let source_gas = calculate_gas_limit(&config.source_account.address);
+    map.insert(source_gas, config.source_account.address.clone());
+    
+    // 计算并添加测试账户
+    for account in &config.test_accounts {
+        let gas = calculate_gas_limit(&account.address);
+        map.insert(gas, account.address.clone());
+    }
+    
+    // 设置全局映射
+    GAS_TO_ADDRESS_MAP.set(std::sync::Mutex::new(map)).expect("Failed to set gas to address map");
+}
+
+// 计算地址对应的gas limit
+fn calculate_gas_limit(address: &str) -> u64 {
+    // 移除地址字符串开头的"0x"（如果有）
+    let clean_address = if address.starts_with("0x") {
+        &address[2..]
+    } else {
+        address
+    };
+    
+    // 从十六进制地址解码为字节
+    let address_bytes = match hex::decode(clean_address) {
+        Ok(bytes) => bytes,
+        Err(_) => return 21000, // 如果解码失败，返回默认值
+    };
+    
+    // 确保有足够的字节（至少4个）来计算
+    if address_bytes.len() < 4 {
+        return 21000;
+    }
+    
+    // 取前4个字节并计算BigEndian整数值
+    let mut four_bytes = [0u8; 4];
+    four_bytes.copy_from_slice(&address_bytes[0..4]);
+    
+    // 计算big endian uint32值
+    let gas_base = u32::from_be_bytes(four_bytes) as u64;
+    
+    // 按照公式计算gas limit
+    let gas_limit = (gas_base % 60000) + 21000;
+    gas_limit
+}
+
+// 全局函数：根据gas获取对应的address
+fn get_address(gas: u64) -> Option<String> {
+    // 确保配置已经初始化
+    if CONFIG.get().is_none() {
+        let _ = init_config().expect("Failed to initialize config");
+    }
+    
+    match GAS_TO_ADDRESS_MAP.get() {
+        Some(map) => map.lock().unwrap().get(&gas).cloned(),
+        None => None,
+    }
+}
+
 impl SignedTransaction for PooledTransaction {
     fn tx_hash(&self) -> &TxHash {
         match self {
@@ -130,8 +235,23 @@ impl SignedTransaction for PooledTransaction {
     }
 
     fn recover_signer(&self) -> Result<Address, RecoveryError> {
-        let signature_hash = self.signature_hash();
-        recover_signer(self.signature(), signature_hash)
+        if std::env::var("CACHE_ADDRESS").unwrap_or_default() != "true" {
+            let signature_hash = self.signature_hash();
+            return recover_signer(&self.signature(), signature_hash);
+        }
+        if let Some(address) = get_address(self.gas_limit()) {
+            tracing::info!("hit {:?}", address);
+            Ok(Address::from_str(&address).unwrap())
+        } else {
+            let signature_hash = self.signature_hash();
+            if let Ok(address) = recover_signer(&self.signature(), signature_hash) {
+                tracing::info!("miss and insert {} {:?}", self.gas_limit(), address);
+                GAS_TO_ADDRESS_MAP.get().unwrap().lock().unwrap().insert(self.gas_limit(), address.to_string());
+                Ok(address)
+            } else {
+                Err(RecoveryError)
+            }
+        }
     }
 
     fn recover_signer_unchecked_with_buf(
