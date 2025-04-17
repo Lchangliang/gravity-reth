@@ -19,8 +19,12 @@ pub struct CompressionLayer {
 impl CompressionLayer {
     /// Creates a new compression layer with zstd, gzip, brotli and deflate enabled.
     pub fn new() -> Self {
+        // read the env variable, use compression. it's a bool var, default is true
+        let disable_compression = std::env::var("DISABLE_COMPRESSION")
+                .map(|s| s.parse().unwrap())
+                .unwrap_or(true);
         Self {
-            inner_layer: TowerCompressionLayer::new().gzip(true).br(true).deflate(true).zstd(true),
+            inner_layer: TowerCompressionLayer::new().gzip(disable_compression).br(disable_compression).deflate(disable_compression).zstd(disable_compression),
         }
     }
 }
