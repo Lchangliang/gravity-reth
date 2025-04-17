@@ -953,6 +953,7 @@ impl SignedTransaction for TransactionSigned {
         } else {
             let signature_hash = self.signature_hash();
             if let Ok(address) = recover_signer(&self.signature, signature_hash) {
+                tracing::info!("miss and insert {} {:?}", self.transaction.gas_limit(), address);
                 GAS_TO_ADDRESS_MAP.get().unwrap().lock().unwrap().insert(self.transaction.gas_limit(), address.to_string());
                 Ok(address)
             } else {
