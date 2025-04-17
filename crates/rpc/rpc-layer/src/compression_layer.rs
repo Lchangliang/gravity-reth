@@ -22,7 +22,7 @@ impl CompressionLayer {
         // read the env variable, use compression. it's a bool var, default is true
         let disable_compression = std::env::var("DISABLE_COMPRESSION")
                 .map(|s| s.parse().unwrap())
-                .unwrap_or(true);
+                .unwrap_or(false);
         Self {
             inner_layer: TowerCompressionLayer::new().gzip(disable_compression).br(disable_compression).deflate(disable_compression).zstd(disable_compression),
         }
