@@ -307,7 +307,7 @@ impl Default for RpcServerArgs {
             http: false,
             http_addr: Ipv4Addr::LOCALHOST.into(),
             http_port: constants::DEFAULT_HTTP_RPC_PORT,
-            http_compression: true,
+            http_disable_compression: false,
             http_api: None,
             http_corsdomain: None,
             ws: false,
