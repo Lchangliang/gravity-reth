@@ -855,10 +855,10 @@ where
                 }
             }
 
-            // if let Err(err) = self.advance_persistence() {
-            //     error!(target: "engine::tree", %err, "Advancing persistence failed");
-            //     return
-            // }
+            if let Err(err) = self.advance_persistence() {
+                error!(target: "engine::tree", %err, "Advancing persistence failed");
+                return
+            }
         }
     }
 
