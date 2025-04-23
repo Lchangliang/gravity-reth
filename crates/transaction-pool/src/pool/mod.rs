@@ -92,7 +92,7 @@ use reth_primitives::Recovered;
 use rustc_hash::FxHashMap;
 use std::{collections::HashSet, fmt, sync::Arc, time::Instant};
 use tokio::sync::mpsc;
-use tracing::{debug, trace, warn};
+use tracing::{debug, info, trace, warn};
 mod events;
 use crate::{
     blobstore::BlobStore,
@@ -275,7 +275,10 @@ where
 
     /// Returns a read lock to the pool's data.
     pub fn get_pool_data(&self) -> RwLockReadGuard<'_, TxPool<T>> {
-        self.pool.read()
+        let start =    Instant::now();
+        let res = self.pool.read();
+        info!("pool read took {:?}", start.elapsed());
+        res
     }
 
     /// Returns hashes of _all_ transactions in the pool.
