@@ -202,9 +202,10 @@ where
 
     /// Sets the currently tracked block
     pub fn set_block_info(&self, info: BlockInfo) {
+        let mut pool_write = self.pool.write();
         Self::record_time(
-            || self.pool.write().set_block_info(info),
-            "set block info",
+            || pool_write.set_block_info(info),
+            "pool write set block info",
         )
         // self.pool.write().set_block_info(info)
     }
@@ -414,13 +415,13 @@ where
         //     changed_senders,
         //     update_kind,
         // );
+        let mut pool_write = self.pool.write();
         let outcome = Self::record_time(
             || {
-                self.pool
-                    .write()
+                pool_write
                     .on_canonical_state_change(block_info, mined_transactions, changed_senders, update_kind)
             },
-            "pool on_canonical_state_change",
+            "pool write on_canonical_state_change",
         );
 
         // This will discard outdated transactions based on the account's nonce
@@ -435,11 +436,12 @@ where
     /// This will either promote or discard transactions based on the new account state.
     pub fn update_accounts(&self, accounts: Vec<ChangedAccount>) {
         let changed_senders = self.changed_senders(accounts.into_iter());
+        let mut write_pool = self.pool.write();
         let UpdateOutcome { promoted, discarded } =
             // self.pool.write().update_accounts(changed_senders);
             Self::record_time(
-                || self.pool.write().update_accounts(changed_senders),
-                "pool update_accounts",
+                || write_pool.update_accounts(changed_senders),
+                "pool write update_accounts",
             );
         let mut listener = self.event_listener.write();
 
@@ -565,8 +567,8 @@ where
     ) -> Vec<PoolResult<TxHash>> {
         // Add the transactions and enforce the pool size limits in one write lock
         let (mut added, discarded) = {
-            let start = Instant::now();
             let mut pool = self.pool.write();
+            let start = Instant::now();
             let added = transactions
                 .into_iter()
                 .map(|tx| self.add_transaction(&mut pool, origin, tx))
@@ -578,7 +580,7 @@ where
             } else {
                 Default::default()
             };
-            info!("add_transactions took {:?}", start.elapsed());
+            info!("pool write add_transactions took {:?}", start.elapsed());
             (added, discarded)
         };
 
@@ -763,9 +765,10 @@ where
             return Vec::new()
         }
         // let removed = self.pool.write().remove_transactions(hashes);
+        let mut write_pool = self.pool.write();
         let removed = Self::record_time(
-            || self.pool.write().remove_transactions(hashes),
-            "pool remove_transactions",
+            || write_pool.remove_transactions(hashes),
+            "pool write remove_transactions",
         );
 
         let mut listener = self.event_listener.write();
@@ -785,9 +788,10 @@ where
             return Vec::new()
         }
         // let removed = self.pool.write().remove_transactions_and_descendants(hashes);
+        let mut write_pool = self.pool.write();
         let removed = Self::record_time(
-            || self.pool.write().remove_transactions_and_descendants(hashes),
-            "pool remove_transactions_and_descendants",
+            || write_pool.remove_transactions_and_descendants(hashes),
+            "pool write remove_transactions_and_descendants",
         );
         let mut listener = self.event_listener.write();
 
@@ -803,9 +807,10 @@ where
     ) -> Vec<Arc<ValidPoolTransaction<T::Transaction>>> {
         let sender_id = self.get_sender_id(sender);
         // let removed = self.pool.write().remove_transactions_by_sender(sender_id);
+        let mut write_pool = self.pool.write();
         let removed = Self::record_time(
-            || self.pool.write().remove_transactions_by_sender(sender_id),
-            "pool remove_transactions_by_sender",
+            || write_pool.remove_transactions_by_sender(sender_id),
+            "pool write remove_transactions_by_sender",
         );
         let mut listener = self.event_listener.write();
 
