@@ -194,9 +194,9 @@ where
 
 
     fn record_time<R>(func: impl FnOnce() -> R, comment: &str) -> R {
-        let start = Instant::now();
+        // let start = Instant::now();
         let res = func();
-        info!("{} took {:?}", comment, start.elapsed());
+        // info!("{} took {:?}", comment, start.elapsed());
         res
     }
 
@@ -580,7 +580,7 @@ where
             } else {
                 Default::default()
             };
-            info!("pool write add_transactions took {:?}", start.elapsed());
+            info!("pool write add_transactions {:?} took {:?} ", added.len(), start.elapsed());
             (added, discarded)
         };
 
