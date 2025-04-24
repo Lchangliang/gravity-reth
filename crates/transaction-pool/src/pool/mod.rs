@@ -568,7 +568,7 @@ where
         // Add the transactions and enforce the pool size limits in one write lock
         let (mut added, discarded) = {
             let mut pool = self.pool.write();
-            let start = Instant::now();
+            // let start = Instant::now();
             let added = transactions
                 .into_iter()
                 .map(|tx| self.add_transaction(&mut pool, origin, tx))
@@ -580,7 +580,7 @@ where
             } else {
                 Default::default()
             };
-            info!("pool write add_transactions {:?} took {:?} ", added.len(), start.elapsed());
+            // info!("pool write add_transactions {:?} took {:?} ", added.len(), start.elapsed());
             (added, discarded)
         };
 
