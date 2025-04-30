@@ -8,7 +8,7 @@ use reth_trie::HashedPostState;
 use reth_trie_db::{DatabaseHashedPostState, StateCommitment};
 
 pub use reth_storage_errors::provider::ConsistentViewError;
-use tracing::warn;
+use tracing::{info, warn};
 
 /// A consistent view over state in the database.
 ///
@@ -55,6 +55,7 @@ where
         block_number: u64,
     ) -> ProviderResult<HashedPostState> {
         let provider = self.provider_ro()?;
+        info!("lightman0430 {} {}", block_number, provider.last_block_number()?);
         if block_number == provider.best_block_number()? &&
             block_number == provider.last_block_number()?
         {
