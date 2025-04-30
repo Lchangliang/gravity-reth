@@ -14,6 +14,7 @@ use reth_trie::{
     MultiProofTargets, StorageMultiProof, TrieInput,
 };
 use revm::db::BundleState;
+use tracing::info;
 use std::sync::{Arc, OnceLock};
 
 /// A state provider that stores references to in-memory blocks along with their state as well as a
@@ -134,6 +135,7 @@ impl<N: NodePrimitives> StateRootProvider for MemoryOverlayStateProviderRef<'_, 
         hashed_state_vec: Vec<Arc<HashedPostState>>,
         trie_updates_vec: Vec<Arc<TrieUpdates>>,
     ) -> ProviderResult<(B256, TrieUpdates)> {
+        info!("MemoryOverlayStateProvider");
         let mut input = TrieInput::from_state(state);
         let mut trie_state = MemoryOverlayTrieState::default();
         hashed_state_vec.iter().for_each(|hashed_state| {

@@ -21,6 +21,7 @@ use reth_trie_db::{
     DatabaseProof, DatabaseStateRoot, DatabaseStorageProof, DatabaseStorageRoot,
     DatabaseTrieWitness, StateCommitment,
 };
+use tracing::info;
 use std::sync::Arc;
 
 /// State provider over latest state that takes tx reference.
@@ -107,6 +108,7 @@ impl<Provider: DBProvider + StateCommitmentProvider> StateRootProvider
         hashed_state_vec: Vec<Arc<HashedPostState>>,
         trie_updates_vec: Vec<Arc<TrieUpdates>>,
     ) -> ProviderResult<(B256, TrieUpdates)> {
+        info!("LatestStateProvider");
         let mut input = TrieInput::from_state(state);
         let mut state = HashedPostState::default();
         let mut nodes = TrieUpdates::default();
