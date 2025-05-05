@@ -124,7 +124,7 @@ where
         // Extend with block we are validating root for.
         input.append_ref(state);
         self.metrics.parallel_state_root_input_duration.record(start_time.elapsed());
-        info!("lightman0505 input {:?}", input);
+        info!("lightman0505 input block_number {} {:?}", block_number, input);
 
         let start_time = Instant::now();
         let result =
