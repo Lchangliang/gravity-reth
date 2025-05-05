@@ -330,7 +330,7 @@ where
 
         let (state_root, trie_updates) = if *USE_PARALLEL_STATE_ROOT {
             let result = self.parallel_calculate_state_root(block_number, &hashed_state);
-            assert_eq!(result.0, self.calculate_state_root(block_number, &hashed_state).0);
+            assert_eq!(result.0, self.calculate_state_root(block_number, &hashed_state).0, "block_number: {}", block_number);
             result
         } else {
             self.calculate_state_root(block_number, &hashed_state)
