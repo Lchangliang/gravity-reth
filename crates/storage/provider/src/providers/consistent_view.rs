@@ -61,6 +61,7 @@ where
         {
             Ok(HashedPostState::default())
         } else {
+            info!("lightman0506 ???");
             Ok(HashedPostState::from_reverts::<
                 <Factory::StateCommitment as StateCommitment>::KeyHasher,
             >(provider.tx_ref(), block_number + 1)?)

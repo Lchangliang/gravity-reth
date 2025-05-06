@@ -114,6 +114,7 @@ where
 
         let (hashed_state_vec, trie_updates_vec) = {
             let storage = self.inner.lock().unwrap();
+            info!("lightman0506 {} {}", base_block_number, block_number);
             get_historical_states(&storage, base_block_number, block_number)
         };
         // Extend with contents of parent in-memory blocks
@@ -124,7 +125,6 @@ where
         // Extend with block we are validating root for.
         input.append_ref(state);
         self.metrics.parallel_state_root_input_duration.record(start_time.elapsed());
-        info!("lightman0505 input block_number {} {:?}", block_number, input);
 
         let start_time = Instant::now();
         let result =
