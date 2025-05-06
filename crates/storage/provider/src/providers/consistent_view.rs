@@ -55,8 +55,9 @@ where
         block_number: u64,
     ) -> ProviderResult<HashedPostState> {
         let provider = self.provider_ro()?;
-        info!("lightman0506 {} {} {}", block_number, provider.best_block_number()?, provider.last_block_number()?);
-        if block_number == provider.last_block_number()?
+        info!("lightman0506 revert_state_with_block_number {} {} {}", block_number, provider.best_block_number()?, provider.last_block_number()?);
+        if block_number == provider.best_block_number()? &&
+            block_number == provider.last_block_number()?
         {
             Ok(HashedPostState::default())
         } else {
