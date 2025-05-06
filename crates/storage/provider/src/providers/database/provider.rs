@@ -77,7 +77,7 @@ use std::{
     sync::{mpsc, Arc},
 };
 use tokio::sync::watch;
-use tracing::{debug, trace};
+use tracing::{debug, info, trace};
 
 /// A [`DatabaseProvider`] that holds a read-only database transaction.
 pub type DatabaseProviderRO<DB, N> = DatabaseProvider<<DB as Database>::TX, N>;
@@ -1126,20 +1126,29 @@ impl<TX: DbTx + 'static, N: NodeTypes> BlockNumReader for DatabaseProvider<TX, N
     }
 
     fn best_block_number(&self) -> ProviderResult<BlockNumber> {
-        Ok(self
+        let best_block_number = self
             .get_stage_checkpoint(StageId::Finish)?
             .map(|checkpoint| checkpoint.block_number)
-            .unwrap_or_default())
+            .unwrap_or_default();
+        info!("lightman0506 best_block_number {}", best_block_number);
+        Ok(best_block_number)
     }
 
     fn last_block_number(&self) -> ProviderResult<BlockNumber> {
+        let static_file_block_number = self.static_file_provider.get_highest_static_file_block(StaticFileSegment::Headers);
+        let db_block_number = self
+            .tx
+            .cursor_read::<tables::CanonicalHeaders>()?
+            .last()?
+            .map(|(num, _)| num);
+        info!("lightman0506 last_block_number {:?} {:?}", static_file_block_number, db_block_number);
         Ok(self
             .tx
             .cursor_read::<tables::CanonicalHeaders>()?
             .last()?
             .map(|(num, _)| num)
             .max(
-                self.static_file_provider.get_highest_static_file_block(StaticFileSegment::Headers),
+                static_file_block_number,
             )
             .unwrap_or_default())
     }
