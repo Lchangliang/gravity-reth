@@ -49,6 +49,13 @@ where
         Ok(Self::new(provider, tip))
     }
 
+    pub fn new_with_best_tip(provider: Factory) -> ProviderResult<Self> {
+        let provider_ro = provider.database_provider_ro()?;
+        let last_num = provider_ro.best_block_number()?;
+        let tip = provider_ro.sealed_header(last_num)?.map(|h| (h.hash(), last_num));
+        Ok(Self::new(provider, tip))
+    }
+
     pub fn revert_state_with_block_number(
         &self,
         block_hash: B256,
