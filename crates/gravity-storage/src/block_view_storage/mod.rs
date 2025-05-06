@@ -104,7 +104,7 @@ where
         block_number: u64,
         state: &HashedPostState,
     ) -> (B256, TrieUpdates) {
-        let consistent_view = ConsistentDbView::new_with_last_tip(self.client.clone()).unwrap();
+        let consistent_view = ConsistentDbView::new_with_latest_tip(self.client.clone()).unwrap();
         let (base_block_hash, base_block_number) = consistent_view.tip.unwrap();
 
         let start_time = Instant::now();
