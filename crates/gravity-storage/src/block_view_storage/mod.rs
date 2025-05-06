@@ -109,7 +109,7 @@ where
 
         let start_time = Instant::now();
         let mut input = TrieInput::default();
-        let revert_state = consistent_view.revert_state_with_block_number(base_block_hash, base_block_number).unwrap();
+        let revert_state = HashedPostState::default();
         input.append(revert_state);
 
         let (hashed_state_vec, trie_updates_vec) = {
