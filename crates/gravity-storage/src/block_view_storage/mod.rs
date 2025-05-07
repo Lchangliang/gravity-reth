@@ -104,7 +104,7 @@ where
         block_number: u64,
         state: &HashedPostState,
     ) -> (B256, TrieUpdates) {
-        let consistent_view = ConsistentDbView::new_with_latest_tip(self.client.clone()).unwrap();
+        let consistent_view = ConsistentDbView::new_with_best_tip(self.client.clone()).unwrap();
         let (base_block_hash, base_block_number) = consistent_view.tip.unwrap();
 
         let start_time = Instant::now();
@@ -299,7 +299,7 @@ where
         let gc_block_number = storage.state_provider_info.1;
         if *USE_PARALLEL_STATE_ROOT {
             let provider_ro = self.client.database_provider_ro().unwrap();
-            let last_num = provider_ro.last_block_number().unwrap();
+            let last_num = provider_ro.best_block_number().unwrap();
             if last_num > gc_block_number {
                 storage.state_provider_info = provider_ro
                     .sealed_header(last_num)
