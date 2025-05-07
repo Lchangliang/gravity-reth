@@ -109,8 +109,6 @@ where
 
         let start_time = Instant::now();
         let mut input = TrieInput::default();
-        let revert_state = HashedPostState::default();
-        input.append(revert_state);
 
         let (hashed_state_vec, trie_updates_vec) = {
             let storage = self.inner.lock().unwrap();
