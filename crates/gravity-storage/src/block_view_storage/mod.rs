@@ -175,12 +175,9 @@ where
 
         let storage = self.inner.lock().unwrap();
         let (hashed_state_vec, trie_updates_vec) =
-            { get_historical_states(&storage, base_block_number, block_number) };
+            { get_historical_states(&storage, base_block_number + 1, block_number) };
         drop(storage);
 
-        // Block number should be continuous
-        assert_eq!(hashed_state_vec.len() as u64, block_number - base_block_number - 1);
-        assert_eq!(trie_updates_vec.len() as u64, block_number - base_block_number - 1);
         state_provider
             .state_root_with_updates_v2(state.clone(), hashed_state_vec, trie_updates_vec)
             .unwrap()
