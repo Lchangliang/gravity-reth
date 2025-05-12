@@ -1130,7 +1130,6 @@ impl<TX: DbTx + 'static, N: NodeTypes> BlockNumReader for DatabaseProvider<TX, N
             .get_stage_checkpoint(StageId::Finish)?
             .map(|checkpoint| checkpoint.block_number)
             .unwrap_or_default();
-        info!("lightman0506 best_block_number {}", best_block_number);
         Ok(best_block_number)
     }
 
@@ -1141,7 +1140,6 @@ impl<TX: DbTx + 'static, N: NodeTypes> BlockNumReader for DatabaseProvider<TX, N
             .cursor_read::<tables::CanonicalHeaders>()?
             .last()?
             .map(|(num, _)| num);
-        info!("lightman0506 last_block_number {:?} {:?}", static_file_block_number, db_block_number);
         Ok(self
             .tx
             .cursor_read::<tables::CanonicalHeaders>()?

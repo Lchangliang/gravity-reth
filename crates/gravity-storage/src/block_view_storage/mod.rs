@@ -364,7 +364,6 @@ where
         } else {
             self.calculate_state_root(block_number, &hashed_state)
         };
-        info!("lightman0505 block_number: {}, state_root: {}", block_number, state_root);
         let trie_updates = Arc::new(trie_updates);
 
         {
