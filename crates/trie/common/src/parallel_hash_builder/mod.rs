@@ -6,7 +6,7 @@ use alloy_trie::{
     BranchNodeCompact, HashMap, Nibbles, TrieMask, EMPTY_ROOT_HASH,
 };
 use core::cmp;
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::{mpsc::{self, Receiver, Sender}, Arc};
 use tracing::{info, trace};
 
 mod value;
@@ -40,8 +40,8 @@ pub use value::{HashBuilderValue, HashBuilderValueRef};
 pub enum RawRlpNode {
     Leaf(LeafNode),
     Word(B256),
-    Extension((Nibbles, Box<RawRlpNode>)),
-    Branch((Vec<RawRlpNode>, TrieMask, TrieMask, usize, Option<Sender<Vec<B256>>>)),
+    Extension((Nibbles, Arc<RawRlpNode>)),
+    Branch((Vec<Arc<RawRlpNode>>, TrieMask, TrieMask, usize, Option<Sender<Vec<B256>>>)),
     Default,
 }
 
@@ -52,34 +52,35 @@ impl Default for RawRlpNode {
 }
 
 impl RawRlpNode {
-    fn rlp(self) -> RlpNode {
+    fn rlp(&self) -> RlpNode {
         let mut rlp_buf = vec![];
         match self {
             RawRlpNode::Leaf(leaf_node) => leaf_node.as_ref().rlp(&mut rlp_buf),
-            RawRlpNode::Word(word) => RlpNode::word_rlp(&word),
+            RawRlpNode::Word(word) => RlpNode::word_rlp(word),
             RawRlpNode::Extension((key, child)) => {
-                ExtensionNodeRef::new(&key, &child.rlp()).rlp(&mut rlp_buf)
+                ExtensionNodeRef::new(key, &child.rlp()).rlp(&mut rlp_buf)
             }
             RawRlpNode::Branch((stack, state_mask, hash_mask, first_child_idx, tx)) => {
                 let mut futures = vec![];
-                for raw_rlp_node in stack.into_iter().skip(first_child_idx) {
+                for raw_rlp_node in stack.iter().skip(*first_child_idx) {
                      let (tx, rx) = std::sync::mpsc::sync_channel(1);
+                        let raw_rlp_node_clone = raw_rlp_node.clone();
                         rayon::spawn(move || {
-                            let _ = tx.send(raw_rlp_node.rlp());
+                            let _ = tx.send(raw_rlp_node_clone.rlp());
                         });
                     futures.push(rx);
                 }
                 let mut children = vec![];
-                for _ in 0..first_child_idx {
+                for _ in 0..*first_child_idx {
                     children.push(RlpNode::default());
                 }
                 futures.into_iter().for_each(|rx| {
                     let res = rx.recv().unwrap();
                     children.push(res);
                 });
-                let branch_node = BranchNodeRef::new(&children, state_mask);
+                let branch_node = BranchNodeRef::new(&children, *state_mask);
                 if let Some(tx) = tx {
-                    let _ = tx.send(branch_node.child_hashes(hash_mask).collect());
+                    let _ = tx.send(branch_node.child_hashes(*hash_mask).collect());
                 }
                 branch_node.rlp(&mut rlp_buf)
             }
@@ -93,7 +94,7 @@ impl RawRlpNode {
 pub struct ParallelHashBuilder {
     pub key: Nibbles,
     pub value: HashBuilderValue,
-    pub stack: Vec<RawRlpNode>, // RlpNode
+    pub stack: Vec<Arc<RawRlpNode>>, // RlpNode
 
     pub state_masks: Vec<TrieMask>,
     pub tree_masks: Vec<TrieMask>,
@@ -213,7 +214,7 @@ impl ParallelHashBuilder {
     }
 
     fn current_root(&mut self) -> B256 {
-        if let Some(node_ref) = self.stack.pop() {
+        if let Some(node_ref) = self.stack.last() {
             let rlp = node_ref.rlp();
             if let Some(hash) = rlp.as_hash() {
                 hash
@@ -290,10 +291,10 @@ impl ParallelHashBuilder {
             if !build_extensions {
                 match self.value.as_ref() {
                     HashBuilderValueRef::Bytes(leaf_value) => {
-                        let leaf_node = RawRlpNode::Leaf(LeafNode::new(
+                        let leaf_node = Arc::new(RawRlpNode::Leaf(LeafNode::new(
                             short_node_key.clone(),
                             leaf_value.to_vec(),
-                        ));
+                        )));
                         trace!(
                             target: "trie::hash_builder",
                             ?leaf_node,
@@ -303,7 +304,7 @@ impl ParallelHashBuilder {
                     }
                     HashBuilderValueRef::Hash(hash) => {
                         trace!(target: "trie::hash_builder", ?hash, "pushing branch node hash");
-                        self.stack.push(RawRlpNode::Word(*hash));
+                        self.stack.push(Arc::new(RawRlpNode::Word(*hash)));
 
                         if self.stored_in_database {
                             self.tree_masks[current.len() - 1] |=
@@ -321,7 +322,7 @@ impl ParallelHashBuilder {
                 self.update_masks(&current, len_from);
                 let stack_last = self.stack.pop().expect("there should be at least one stack item");
                 let extension_node =
-                    RawRlpNode::Extension((short_node_key.clone(), Box::new(stack_last)));
+                    Arc::new(RawRlpNode::Extension((short_node_key.clone(), stack_last)));
                 trace!(
                     target: "trie::hash_builder",
                     ?extension_node,
@@ -379,9 +380,9 @@ impl ParallelHashBuilder {
         // Avoid calculating this value if it's not needed.
         let (branch_node, rx) = if self.updated_branch_nodes.is_some() {
             let (tx, rx) = mpsc::channel();
-            (RawRlpNode::Branch((self.stack.clone(), state_mask, hash_mask, first_child_idx, Some(tx))), Some(rx))
+            (Arc::new(RawRlpNode::Branch((self.stack.clone(), state_mask, hash_mask, first_child_idx, Some(tx)))), Some(rx))
         } else {
-            (RawRlpNode::Branch((self.stack.clone(), state_mask, hash_mask, first_child_idx, None)), None)
+            (Arc::new(RawRlpNode::Branch((self.stack.clone(), state_mask, hash_mask, first_child_idx, None))), None)
         };
 
         // Clears the stack from the branch node elements
