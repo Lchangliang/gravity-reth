@@ -6,7 +6,7 @@ use alloy_trie::{
     BranchNodeCompact, HashMap, Nibbles, TrieMask, EMPTY_ROOT_HASH,
 };
 use core::cmp;
-use std::sync::{mpsc::{self, Receiver, Sender}, Arc};
+use std::{sync::{mpsc::{self, Receiver, Sender}, Arc}, time::Instant};
 use tracing::{info, trace};
 
 mod value;
@@ -55,12 +55,26 @@ impl RawRlpNode {
     fn rlp(&self) -> RlpNode {
         let mut rlp_buf = vec![];
         match self {
-            RawRlpNode::Leaf(leaf_node) => leaf_node.as_ref().rlp(&mut rlp_buf),
-            RawRlpNode::Word(word) => RlpNode::word_rlp(word),
+            RawRlpNode::Leaf(leaf_node) => {
+                let start = Instant::now();
+                let rlp = leaf_node.as_ref().rlp(&mut rlp_buf);
+                info!("lightman0513 state root rlp leaf {}", start.elapsed().as_micros());
+                rlp
+            },
+            RawRlpNode::Word(word) => {
+                let start = Instant::now();
+                let rlp = RlpNode::word_rlp(word);
+                info!("lightman0513 state root rlp word {}", start.elapsed().as_micros());
+                rlp
+            },
             RawRlpNode::Extension((key, child)) => {
-                ExtensionNodeRef::new(key, &child.rlp()).rlp(&mut rlp_buf)
+                let start = Instant::now();
+                let rlp = ExtensionNodeRef::new(key, &child.rlp()).rlp(&mut rlp_buf);
+                info!("lightman0513 state root rlp extension {}", start.elapsed().as_micros());
+                rlp
             }
             RawRlpNode::Branch((stack, state_mask, hash_mask, first_child_idx, tx, root_hash_tx)) => {
+                let start = Instant::now();
                 let mut futures = vec![];
                 for raw_rlp_node in stack.iter().skip(*first_child_idx) {
                      let (tx, rx) = std::sync::mpsc::sync_channel(1);
@@ -91,6 +105,7 @@ impl RawRlpNode {
                     };
                     let _ = tx.send(hash);
                 }
+                info!("lightman0513 state root rlp branch {}", start.elapsed().as_micros());
                 rlp
             }
             _ => panic!("Cannot be Default"),
