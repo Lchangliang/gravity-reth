@@ -158,10 +158,8 @@ where
         self.metrics.parallel_state_root_input_duration.record(start_time.elapsed());
 
         let start_time = Instant::now();
-        info!("lightman0513 state root block_number {} start", block_number);
         let result =
             ParallelStateRoot::new(consistent_view, input).incremental_root_with_updates().unwrap();
-        info!("lightman0513 state root block_number {}  end {}", block_number, start_time.elapsed().as_micros());
         self.metrics.parallel_state_root_duration.record(start_time.elapsed());
         result
     }

@@ -56,30 +56,10 @@ impl RawRlpNode {
     fn rlp(&self) -> RlpNode {
         let mut rlp_buf = vec![];
         match self {
-            RawRlpNode::Leaf(leaf_node) => {
-                info!("lightman0513 state root rlp leaf start");
-                let start = Instant::now();
-                let rlp = leaf_node.as_ref().rlp(&mut rlp_buf);
-                info!("lightman0513 state root rlp leaf {}", start.elapsed().as_micros());
-                rlp
-            },
-            RawRlpNode::Word(word) => {
-                info!("lightman0513 state root rlp word start");
-                let start = Instant::now();
-                let rlp = RlpNode::word_rlp(word);
-                info!("lightman0513 state root rlp word {}", start.elapsed().as_micros());
-                rlp
-            },
-            RawRlpNode::Extension((key, child)) => {
-                info!("lightman0513 state root rlp extension start");
-                let start = Instant::now();
-                let rlp = ExtensionNodeRef::new(key, &child.rlp()).rlp(&mut rlp_buf);
-                info!("lightman0513 state root rlp extension {}", start.elapsed().as_micros());
-                rlp
-            }
+            RawRlpNode::Leaf(leaf_node) => leaf_node.as_ref().rlp(&mut rlp_buf),
+            RawRlpNode::Word(word) => RlpNode::word_rlp(word),
+            RawRlpNode::Extension((key, child)) => ExtensionNodeRef::new(key, &child.rlp()).rlp(&mut rlp_buf),
             RawRlpNode::Branch((stack, state_mask, hash_mask, first_child_idx, tx, root_hash_tx)) => {
-                info!("lightman0513 state root rlp branch start");
-                let start = Instant::now();
                 let children: Vec<RlpNode> = stack.par_iter().skip(*first_child_idx)
                     .map(|raw_rlp_node| raw_rlp_node.rlp())
                     .collect();
@@ -99,7 +79,6 @@ impl RawRlpNode {
                     };
                     let _ = tx.send(hash);
                 }
-                info!("lightman0513 state root rlp branch {}", start.elapsed().as_micros());
                 rlp
             }
             _ => panic!("Cannot be Default"),
@@ -211,7 +190,6 @@ impl ParallelHashBuilder {
 
     /// Returns the current root hash of the trie builder.
     pub fn root(&mut self) -> B256 {
-        info!("lightman0513 state root counter {}", self.counter);
         // Clears the internal state
         if !self.key.is_empty() {
             self.update(&Nibbles::default());
