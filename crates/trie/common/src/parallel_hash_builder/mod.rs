@@ -83,15 +83,12 @@ impl RawRlpNode {
                 for raw_rlp_node in stack.iter().skip(*first_child_idx) {
                      let (tx, rx) = std::sync::mpsc::sync_channel(1);
                         let raw_rlp_node_clone = raw_rlp_node.clone();
-                        std::thread::spawn(move || {
+                        rayon::spawn(move || {
                             let _ = tx.send(raw_rlp_node_clone.rlp());
                         });
                     futures.push(rx);
                 }
-                let mut children = vec![];
-                for _ in 0..*first_child_idx {
-                    children.push(RlpNode::default());
-                }
+                let mut children = vec![RlpNode::default(); *first_child_idx];
                 futures.into_iter().for_each(|rx| {
                     let res = rx.recv().unwrap();
                     children.push(res);
