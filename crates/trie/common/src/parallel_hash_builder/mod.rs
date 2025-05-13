@@ -5,6 +5,7 @@ use alloy_trie::{
     nodes::{BranchNode, BranchNodeRef, ExtensionNodeRef, LeafNode, RlpNode},
     BranchNodeCompact, HashMap, Nibbles, TrieMask, EMPTY_ROOT_HASH,
 };
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use core::cmp;
 use std::{sync::{mpsc::{self, Receiver, Sender}, Arc}, time::Instant};
 use tracing::{info, trace};
@@ -79,21 +80,13 @@ impl RawRlpNode {
             RawRlpNode::Branch((stack, state_mask, hash_mask, first_child_idx, tx, root_hash_tx)) => {
                 info!("lightman0513 state root rlp branch start");
                 let start = Instant::now();
-                let mut futures = vec![];
-                for raw_rlp_node in stack.iter().skip(*first_child_idx) {
-                     let (tx, rx) = std::sync::mpsc::sync_channel(1);
-                        let raw_rlp_node_clone = raw_rlp_node.clone();
-                        rayon::spawn(move || {
-                            let _ = tx.send(raw_rlp_node_clone.rlp());
-                        });
-                    futures.push(rx);
-                }
-                let mut children = vec![RlpNode::default(); *first_child_idx];
-                futures.into_iter().for_each(|rx| {
-                    let res = rx.recv().unwrap();
-                    children.push(res);
-                });
-                let branch_node = BranchNodeRef::new(&children, *state_mask);
+                let children: Vec<RlpNode> = stack.par_iter().skip(*first_child_idx)
+                    .map(|raw_rlp_node| raw_rlp_node.rlp())
+                    .collect();
+
+                let mut all_children = vec![RlpNode::default(); *first_child_idx];
+                all_children.extend(children);
+                let branch_node = BranchNodeRef::new(&all_children, *state_mask);
                 if let Some(tx) = tx {
                     let _ = tx.send(branch_node.child_hashes(*hash_mask).collect());
                 }
