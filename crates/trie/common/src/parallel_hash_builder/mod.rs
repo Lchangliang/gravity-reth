@@ -113,6 +113,8 @@ pub struct ParallelHashBuilder {
 
     pub updated_branch_nodes:
         Option<HashMap<Nibbles, (BranchNodeCompact, Option<Receiver<Vec<B256>>>, Option<Receiver<B256>>)>>,
+    
+    pub counter: usize,
 }
 
 impl ParallelHashBuilder {
@@ -192,6 +194,7 @@ impl ParallelHashBuilder {
             self.update(&key);
         } else if key.is_empty() {
             self.stack.push(Arc::new(RawRlpNode::Word(value.clone())));
+            self.counter += 1;
         }
         self.set_key_value(key, HashBuilderValueRef::Hash(&value));
         self.stored_in_database = stored_in_database;
@@ -199,6 +202,7 @@ impl ParallelHashBuilder {
 
     /// Returns the current root hash of the trie builder.
     pub fn root(&mut self) -> B256 {
+        info!("lightman0513 state root counter {}", self.counter);
         // Clears the internal state
         if !self.key.is_empty() {
             self.update(&Nibbles::default());
@@ -313,10 +317,12 @@ impl ParallelHashBuilder {
                             "pushing leaf node",
                         );
                         self.stack.push(leaf_node);
+                        self.counter += 1;
                     }
                     HashBuilderValueRef::Hash(hash) => {
                         trace!(target: "trie::hash_builder", ?hash, "pushing branch node hash");
                         self.stack.push(Arc::new(RawRlpNode::Word(*hash)));
+                        self.counter += 1;
 
                         if self.stored_in_database {
                             self.tree_masks[current.len() - 1] |=
@@ -341,6 +347,7 @@ impl ParallelHashBuilder {
                     "pushing extension node",
                 );
                 self.stack.push(extension_node);
+                self.counter += 1;
                 self.resize_masks(len_from);
             }
 
@@ -414,6 +421,7 @@ impl ParallelHashBuilder {
 
         trace!(target: "trie::hash_builder", ?branch_node, "pushing branch node with {state_mask:?} mask from stack");
         self.stack.push(branch_node);
+        self.counter += 1;
         rx
     }
 
