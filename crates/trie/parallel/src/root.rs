@@ -206,7 +206,7 @@ where
         let root = hash_builder.root();
         let duration2 = start2.elapsed();
 
-        info!("lightman0513 modify {}, calculate {}", duration1.as_millis(), duration2.as_millis());
+        info!("lightman0513 modify {}, calculate {}", duration1.as_micros(), duration2.as_micros());
         let removed_keys = account_node_iter.walker.take_removed_keys();
         trie_updates.finalize_v2(hash_builder, removed_keys, prefix_sets.destroyed_accounts);
 
