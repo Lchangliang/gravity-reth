@@ -56,24 +56,28 @@ impl RawRlpNode {
         let mut rlp_buf = vec![];
         match self {
             RawRlpNode::Leaf(leaf_node) => {
+                info!("lightman0513 state root rlp leaf start");
                 let start = Instant::now();
                 let rlp = leaf_node.as_ref().rlp(&mut rlp_buf);
                 info!("lightman0513 state root rlp leaf {}", start.elapsed().as_micros());
                 rlp
             },
             RawRlpNode::Word(word) => {
+                info!("lightman0513 state root rlp word start");
                 let start = Instant::now();
                 let rlp = RlpNode::word_rlp(word);
                 info!("lightman0513 state root rlp word {}", start.elapsed().as_micros());
                 rlp
             },
             RawRlpNode::Extension((key, child)) => {
+                info!("lightman0513 state root rlp extension start");
                 let start = Instant::now();
                 let rlp = ExtensionNodeRef::new(key, &child.rlp()).rlp(&mut rlp_buf);
                 info!("lightman0513 state root rlp extension {}", start.elapsed().as_micros());
                 rlp
             }
             RawRlpNode::Branch((stack, state_mask, hash_mask, first_child_idx, tx, root_hash_tx)) => {
+                info!("lightman0513 state root rlp branch start");
                 let start = Instant::now();
                 let mut futures = vec![];
                 for raw_rlp_node in stack.iter().skip(*first_child_idx) {
