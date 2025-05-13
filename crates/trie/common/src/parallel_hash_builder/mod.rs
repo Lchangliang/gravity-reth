@@ -179,7 +179,7 @@ impl ParallelHashBuilder {
         if !self.key.is_empty() {
             self.update(&key);
         } else if key.is_empty() {
-            self.stack.push(RawRlpNode::Word(value.clone()));
+            self.stack.push(Arc::new(RawRlpNode::Word(value.clone())));
         }
         self.set_key_value(key, HashBuilderValueRef::Hash(&value));
         self.stored_in_database = stored_in_database;
