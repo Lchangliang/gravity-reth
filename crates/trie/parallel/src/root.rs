@@ -23,6 +23,7 @@ use reth_trie_db::{DatabaseHashedCursorFactory, DatabaseTrieCursorFactory};
 use std::{collections::HashMap, sync::Arc};
 use thiserror::Error;
 use tracing::*;
+use std::time::{Instant, Duration};
 
 /// Parallel incremental state root calculator.
 ///
