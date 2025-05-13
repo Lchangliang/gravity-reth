@@ -404,7 +404,7 @@ impl ParallelHashBuilder {
         };
 
         // Clears the stack from the branch node elements
-        info!(
+        trace!(
             target: "trie::hash_builder",
             new_len = first_child_idx,
             old_len = self.stack.len(),
