@@ -158,6 +158,7 @@ where
 
         let mut hash_builder = ParallelHashBuilder::default().with_updates(retain_updates);
         let mut account_rlp = Vec::with_capacity(TRIE_ACCOUNT_RLP_MAX_SIZE);
+        let start1 = Instant::now();
         while let Some(node) = account_node_iter.try_next().map_err(ProviderError::Database)? {
             match node {
                 TrieElement::Branch(node) => {
@@ -199,9 +200,12 @@ where
                 }
             }
         }
-
+        let duration1 = start1.elapsed();
+        let start2 = Instant::now();
         let root = hash_builder.root();
+        let duration2 = start2.elapsed();
 
+        info!("lightman0513 modify {}, calculate {}", duration1.as_millis(), duration2.as_millis());
         let removed_keys = account_node_iter.walker.take_removed_keys();
         trie_updates.finalize_v2(hash_builder, removed_keys, prefix_sets.destroyed_accounts);
 
