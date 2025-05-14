@@ -19,9 +19,18 @@ use reth_trie::{
     HashBuilder, Nibbles, StorageRoot, TrieInput, TRIE_ACCOUNT_RLP_MAX_SIZE,
 };
 use reth_trie_db::{DatabaseHashedCursorFactory, DatabaseTrieCursorFactory};
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Instant};
 use thiserror::Error;
 use tracing::*;
+use reth_metrics::{metrics::Histogram, Metrics};
+
+#[derive(Metrics)]
+#[metrics(scope = "parallel_state_root")]
+struct ParallelStateRootMetricsV2 {
+    /// How long it took for parallel state root calculation
+    parallel_state_root_modify_and_calculate_duration: Histogram,
+}
+
 
 /// Parallel incremental state root calculator.
 ///
@@ -43,6 +52,7 @@ pub struct ParallelStateRoot<Factory> {
     /// Parallel state root metrics.
     #[cfg(feature = "metrics")]
     metrics: ParallelStateRootMetrics,
+    metrics_v2: ParallelStateRootMetricsV2,
 }
 
 impl<Factory> ParallelStateRoot<Factory> {
@@ -53,6 +63,7 @@ impl<Factory> ParallelStateRoot<Factory> {
             input,
             #[cfg(feature = "metrics")]
             metrics: ParallelStateRootMetrics::default(),
+            metrics_v2: ParallelStateRootMetricsV2::default(),
         }
     }
 }
@@ -157,6 +168,7 @@ where
 
         let mut hash_builder = HashBuilder::default().with_updates(retain_updates);
         let mut account_rlp = Vec::with_capacity(TRIE_ACCOUNT_RLP_MAX_SIZE);
+        let start = Instant::now();
         while let Some(node) = account_node_iter.try_next().map_err(ProviderError::Database)? {
             match node {
                 TrieElement::Branch(node) => {
@@ -200,7 +212,7 @@ where
         }
 
         let root = hash_builder.root();
-
+        self.metrics_v2.parallel_state_root_modify_and_calculate_duration.record(start.elapsed());
         let removed_keys = account_node_iter.walker.take_removed_keys();
         trie_updates.finalize(hash_builder, removed_keys, prefix_sets.destroyed_accounts);
 
