@@ -19,7 +19,7 @@ use reth_trie::{
     HashBuilder, Nibbles, StorageRoot, TrieInput, TRIE_ACCOUNT_RLP_MAX_SIZE,
 };
 use reth_trie_db::{DatabaseHashedCursorFactory, DatabaseTrieCursorFactory};
-use std::{collections::HashMap, sync::Arc, time::Instant};
+use std::{collections::HashMap, sync::Arc, time::{Duration, Instant}};
 use thiserror::Error;
 use tracing::*;
 use reth_metrics::{metrics::Histogram, Metrics};
@@ -171,7 +171,7 @@ where
         let mut hash_builder = HashBuilder::default().with_updates(retain_updates);
         let mut account_rlp = Vec::with_capacity(TRIE_ACCOUNT_RLP_MAX_SIZE);
         let start = Instant::now();
-        let calculate_use_time: usize = 0;
+        let mut calculate_use_time: Duration = Duration::ZERO;
         while let Some(node) = account_node_iter.try_next().map_err(ProviderError::Database)? {
             match node {
                 TrieElement::Branch(node) => {
