@@ -29,6 +29,8 @@ use reth_metrics::{metrics::Histogram, Metrics};
 struct ParallelStateRootMetricsV2 {
     /// How long it took for parallel state root calculation
     parallel_state_root_modify_and_calculate_duration: Histogram,
+    /// How long it took for parallel state root calculation
+    parallel_state_root_calculate_duration: Histogram,
 }
 
 
@@ -169,10 +171,13 @@ where
         let mut hash_builder = HashBuilder::default().with_updates(retain_updates);
         let mut account_rlp = Vec::with_capacity(TRIE_ACCOUNT_RLP_MAX_SIZE);
         let start = Instant::now();
+        let calculate_use_time: usize = 0;
         while let Some(node) = account_node_iter.try_next().map_err(ProviderError::Database)? {
             match node {
                 TrieElement::Branch(node) => {
+                    let calculate_start = Instant::now();
                     hash_builder.add_branch(node.key, node.value, node.children_are_in_trie);
+                    calculate_use_time += calculate_start.elapsed();
                 }
                 TrieElement::Leaf(hashed_address, account) => {
                     let (storage_root, _, updates) = match storage_roots.remove(&hashed_address) {
@@ -206,10 +211,13 @@ where
                     account_rlp.clear();
                     let account = account.into_trie_account(storage_root);
                     account.encode(&mut account_rlp as &mut dyn BufMut);
+                    let calculate_start = Instant::now();
                     hash_builder.add_leaf(Nibbles::unpack(hashed_address), &account_rlp);
+                    calculate_use_time += calculate_start.elapsed();
                 }
             }
         }
+        self.metrics_v2.parallel_state_root_calculate_duration.record(calculate_use_time);
 
         let root = hash_builder.root();
         self.metrics_v2.parallel_state_root_modify_and_calculate_duration.record(start.elapsed());
