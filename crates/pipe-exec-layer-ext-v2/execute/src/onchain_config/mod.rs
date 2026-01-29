@@ -101,7 +101,7 @@ use alloy_consensus::{EthereumTxEnvelope, TxEip4844, TxLegacy};
 use alloy_primitives::{Bytes, Signature, U256};
 use reth_ethereum_primitives::{Transaction, TransactionSigned};
 use revm_primitives::TxKind;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 /// Construct validator transactions envelope (JWK updates and DKG transcripts)
 ///
@@ -154,7 +154,7 @@ pub fn construct_validator_txn_from_extra_data(
 
             // Unified handler for all oracle data (JWK and blockchain events)
             // Routing between sourceType is done inside construct_oracle_record_transaction
-            jwk_oracle::construct_oracle_record_transaction(provider_jwks, nonce, gas_price)
+            jwk_oracle::construct_oracle_record_transaction(provider_jwks, nonce, gas_price);
         }
         gravity_api_types::ExtraDataType::DKG(data_bytes) => {
             // Deserialize as DKGTranscript
